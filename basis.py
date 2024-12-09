@@ -71,8 +71,8 @@ move_timer = time.time()
 
 def handle_input():
     global move_timer
-    keys = pygame.key.get_pressed()
     
+    keys = pygame.key.get_pressed()
     current_time = time.time()
     if current_time - move_timer > 0.1:
         if keys[pygame.K_LEFT]:
@@ -84,8 +84,6 @@ def handle_input():
         if keys[pygame.K_DOWN]:
             move_block(0,1)
             move_timer=current_time
-        if keys[pygame.K_SPACE]:
-            rotate_block()
 
 # current_block_exppressing setting
 def draw_current_block():
@@ -174,6 +172,11 @@ def main():
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 running = False
+            elif event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    rotate_block()
+            elif event.type == pygame.KEYUP:
+                pass
         
         handle_input()
         
