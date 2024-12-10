@@ -22,6 +22,7 @@ ORANGE = (255,165,0)
 BLUE = (0,0,255)
 BLACK = (0,0,0)
 WHITE = (255,255,255)
+GRAY = (50,50,50)
 colors = [CYAN,YELLOW,PURPLE,RED,GREEN,ORANGE,BLUE]
 
 # block and board setting
@@ -48,6 +49,7 @@ players = [
      "current_pos": [0, COLS // 2 - 2],
      "current_color": colors[0],
      "score": 0,
+     "game_over": False,
     },
     {
      "board": [[0 for _ in range(COLS)] for _ in range(ROWS)],
@@ -55,6 +57,7 @@ players = [
      "current_pos": [0, COLS // 2 - 2],
      "current_color": colors[1],
      "score": 0,
+     "game_over": False,
     },
 ]
 
@@ -64,13 +67,16 @@ def draw_board(player, index):
     
     for row in range(ROWS):
         for col in range(COLS):
-            if player["board"][row][col] != 0:
-                block_x = col * 30 + offset_x
-                block_y = row * 30
+            block_x = col * 30 + offset_x
+            block_y = row * 30
                 
-                pygame.draw.rect(screen, color, (block_x,block_y,30,30))
-                pygame.draw.rect(screen, WHITE, (block_x,block_y,30,30),1)
-
+            if player["board"][row][col] == 0:
+                pygame.draw.rect(screen, BLACK, (block_x,block_y,30,30))
+                pygame.draw.rect(screen, GRAY, (block_x,block_y,30,30),1)
+            else:
+                pygame.draw.rect(screen, player["board"][row][col], (block_x,block_y,30,30))
+                pygame.draw.rect(screen, GRAY, (block_x,block_y,30,30),1)
+    
 # block moving function
 def move_block(player, dx, dy):
     player["current_pos"][0] += dy
@@ -81,7 +87,16 @@ def move_block(player, dx, dy):
         player["current_pos"][1] -= dx
 
 # handling function
+last_joystick_time=[0,0]
+joystick_delay=0.04
+
 def handle_input(player, player_index):
+    global last_joystick_time
+    current_time = time.time()
+    
+    if(current_time - last_joystick_time[player_index]) < joystick_delay:
+        return
+    
     x, y, sw = get_joystick_input(player_index)
     
     if x < 300:
@@ -97,6 +112,8 @@ def handle_input(player, player_index):
     
     if is_switch_pressed(player_index):
         rotate_block(player)
+    
+    last_joystick_time[player_index] = current_time
 
 # current_block_exppressing function
 def draw_current_block(player, index):
@@ -105,9 +122,9 @@ def draw_current_block(player, index):
     for y,row in enumerate(player["current_shape"]):
         for x,cell in enumerate(row):
             if cell:
-                block_x = (player["current_pos"][1]+x) * 30
+                block_x = (player["current_pos"][1]+x) * 30 + offset_x
                 block_y = (player["current_pos"][0]+y) * 30
-                pygame.draw.rect(screen, player["current_color"], (block_x, block_y, 30,30))
+                pygame.draw.rect(screen, player["current_color"], (block_x, block_y,30,30))
                 pygame.draw.rect(screen, WHITE, (block_x, block_y, 30,30),1)
 
 # block dropping and collision function
@@ -123,7 +140,7 @@ def drop_block(player):
 # block rotation function
 def rotate_block(player):
     original_shape = player["current_shape"]
-    rotated_shape = [list(row) for row in zip(*current_shape[::-1])] # 90 degree rotation
+    rotated_shape = [list(row) for row in zip(*original_shape[::-1])] # 90 degree rotation
     
     player["current_shape"] = rotated_shape
     # rotation and collision checking   
@@ -160,36 +177,45 @@ def spawn_new_block(player):
     player["current_pos"] = [0, COLS // 2 - len(player["current_shape"][0]) // 2]
     
     if check_collision(player):
-        print("Game Over")
-        pygame.quit()
-        sys.exit()
+        player["game_over"] = True
 
 # checking line clear setting
 def clear_lines(player, opponent):
+    original_board = player["board"]
+    
     new_board = [row for row in player["board"] if any(cell == 0 for cell in row)]
-    cleared_lines = ROWS - len(new_board)
+    cleared_lines = len(original_board) - len(new_board)
+    
     player["board"] = [[0]*COLS for _ in range(cleared_lines)] + new_board
     
     # plus point
-    player["score"] += cleared_lines * 10
+    if cleared_lines > 0:
+        player["score"] += cleared_lines * 10
     
     # obstacle making
-    if cleared_lines >0:
-        add_obstacle(opponent)
+    if cleared_lines > 0:
+        add_obstacle(opponent, cleared_lines)
 
 # maing obstacle function
-def add_obstacle(player):
-    for _ in range(1):
-        new_row = [random.choice([0,0, player["current_color"]]) for _ in range(COLS)]
-        player["board"].insert(0,new_row)
-        player["board"].pop()
+def add_obstacle(opponent, num_lines):
+    for _ in range(num_lines):
+        empty_index = random.randint(0, COLS-1)
+        new_row = [(0 if col == empty_index else (80,80,80)) for col in range(COLS)]
+        opponent["board"].append(new_row)
+        
+    while len(opponent["board"]) > ROWS:
+        opponent["board"].pop(0)
 
 # game ending function
 def check_game_over(player):
     for cell in player["board"][0]:
         if cell != 0:
             return True
-        return False
+    
+    if player["game_over"]:
+        return True
+    
+    return False
 
 # main function
 def main():

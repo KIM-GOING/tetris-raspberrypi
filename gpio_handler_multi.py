@@ -7,10 +7,10 @@ spi = spidev.SpiDev()
 
 # joystick and switch pin numbering
 JOYSTICKS = [
-    {"VRX": 0, "VRY": 2, "SW": 17},
     {"VRX": 1, "VRY": 3, "SW": 27},
+    {"VRX": 0, "VRY": 2, "SW": 17},
 ]
-SWITCHES = [22,23]
+SWITCHES = [23,22]
 
 # GPIO initialize function
 def initialize_gpio():
@@ -54,7 +54,6 @@ def get_joystick_input(player_index):
         x = read_adc(joystick["VRX"])
         y = read_adc(joystick["VRY"])
         sw = GPIO.input(joystick["SW"]) == GPIO.LOW
-        print(f"Joystick Input - x: {x}, y: {y}, sw: {sw}")
         return x, y, sw
     except Exception as e:
         print("Error in get_joystick_input: {e}")
@@ -66,7 +65,7 @@ last_switch_states = [False, False]
 def is_switch_pressed(player_index):
     global switch_states, last_switch_states
     current_state = GPIO.input(SWITCHES[player_index]) == GPIO.LOW
-    
+        
     if current_state and not last_switch_states[player_index]:
         switch_states[player_index] = True
     else:
