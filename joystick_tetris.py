@@ -68,7 +68,16 @@ def move_block(dx, dy):
         current_pos[1] -= dx
 
 # handling setting
+last_joystick_time = 0
+joystick_delay = 0.05
+
 def handle_input():
+    global last_joystick_time
+    current_time = time.time()
+    
+    if (current_time - last_joystick_time) < joystick_delay:
+        return
+        
     x, y, sw = get_joystick_input()
     
     if x < 300:
@@ -84,6 +93,8 @@ def handle_input():
     
     if is_switch_pressed():
         rotate_block()
+    
+    last_joystick_time = current_time
 
 # current_block_exppressing setting
 def draw_current_block():
