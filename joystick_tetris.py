@@ -68,16 +68,14 @@ def move_block(dx, dy):
         current_pos[1] -= dx
 
 # handling setting
-move_timer = time.time()
-
 def handle_input():
-    global move_timer
-    s, y, sw = get_joystick_input()
+    x, y, sw = get_joystick_input()
     
     if x < 300:
         move_block(-1,0)
     elif x > 700:
         move_block(1,0)
+        
     if y > 700:
         move_block(0,1)
     
@@ -86,19 +84,6 @@ def handle_input():
     
     if is_switch_pressed():
         rotate_block()
-    
-    keys = pygame.key.get_pressed()
-    current_time = time.time()
-    if current_time - move_timer > 0.1:
-        if keys[pygame.K_LEFT]:
-            move_block(-1,0)
-            move_timer=current_time
-        if keys[pygame.K_RIGHT]:
-            move_block(1,0)
-            move_timer=current_time
-        if keys[pygame.K_DOWN]:
-            move_block(0,1)
-            move_timer=current_time
 
 # current_block_exppressing setting
 def draw_current_block():
@@ -180,19 +165,17 @@ def main():
     drop_timer = 0
     
     try:
+        initialize_gpio()
+        
         while running:
             screen.fill(BLACK)
             draw_board()
             draw_current_block()
+            print(1)
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
                     running = False
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_SPACE:
-                        rotate_block()
-                elif event.type == pygame.KEYUP:
-                    pass
             
             handle_input()
             
