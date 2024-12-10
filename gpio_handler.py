@@ -34,12 +34,28 @@ def read_adc(channel):
     
 
 def get_joystick_input():
-    print(2)
-    x = read_adc(0)
-    y = read_adc(1)
-    sw = GPIO.input(JOYSTICK)
-    print(x, y, sw)
-    return x, y, sw
+    try:
+        print("Reading joystick input...")
+        x = read_adc(0)
+        y = read_adc(1)
+        sw = GPIO.input(JOYSTICK)
+        print(f"Joystick Input - x: {x}, y: {y}, sw: {sw}")
+        return x, y, sw
+    except Exception as e:
+        print("Error in get_joystick_input: {e}")
+        raise
 
+switch_state = False
+last_switch_state = False
 def is_switch_pressed():
-    return GPIO.input(SWITCH) == GPIO.LOW
+    global switch_state, last_switch_state
+    current_state = GPIO.input(SWITCH) == GPIO.LOW
+    
+    if current_state and not last_switch_state:
+        switch_state = True
+    else:
+        switch_state = False
+    
+    last_switch_state = current_state
+    
+    return switch_state

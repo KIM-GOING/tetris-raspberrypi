@@ -79,7 +79,7 @@ def handle_input():
     if y > 700:
         move_block(0,1)
     
-    if sw == GPIO.LOW:
+    if sw == 0:
         drop_block()
     
     if is_switch_pressed():
@@ -171,13 +171,18 @@ def main():
             screen.fill(BLACK)
             draw_board()
             draw_current_block()
-            print(1)
+            
+            print("Running main loop...")
             
             for event in pygame.event.get():
                 if event.type == pygame.QUIT:
+                    print("Quit event detected.")
                     running = False
             
-            handle_input()
+            try:
+                handle_input()
+            except Exception as e:
+                print(f"Error in handle_input: {e}")
             
             drop_timer += 1
             if drop_timer >= FPS // 2:
@@ -188,8 +193,12 @@ def main():
             pygame.display.update()
             clock.tick(FPS)
     
+    except Exception as e:
+        print(f"Unexpected error: {e}")
     finally:
+        print("Cleaning up GPIO...")
         cleanup_gpio()
+        print("Exiting program.")
         pygame.quit()
         sys.exit()
 
