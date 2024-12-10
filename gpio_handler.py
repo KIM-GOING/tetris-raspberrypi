@@ -37,7 +37,7 @@ def get_joystick_input():
     try:
         print("Reading joystick input...")
         x = read_adc(0)
-        y = read_adc(1)
+        y = read_adc(2)
         sw = GPIO.input(JOYSTICK)
         print(f"Joystick Input - x: {x}, y: {y}, sw: {sw}")
         return x, y, sw
