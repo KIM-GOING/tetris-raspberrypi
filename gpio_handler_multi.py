@@ -49,7 +49,6 @@ def read_adc(channel):
 # joystick reading function
 def get_joystick_input(player_index):
     try:
-        print("Reading joystick input...")
         joystick = JOYSTICKS[player_index]
         x = read_adc(joystick["VRX"])
         y = read_adc(joystick["VRY"])

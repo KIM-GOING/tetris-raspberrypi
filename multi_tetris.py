@@ -8,7 +8,7 @@ from gpio_handler_multi import initialize_gpio, cleanup_gpio, get_joystick_input
 pygame.init()
 
 # screen setting
-WIDTH, HEIGHT = 610, 600
+WIDTH, HEIGHT = 610, 660
 screen = pygame.display.set_mode((WIDTH, HEIGHT))
 pygame.display.set_caption("Tetris PVP")
 
@@ -217,39 +217,81 @@ def check_game_over(player):
     
     return False
 
+# viewing point function
+def draw_scores():
+    font = pygame.font.Font(None, 36)
+    
+    for i, player in enumerate(players):
+        score_text = font.render(f"Player {i+1} Score: {player['score']}", True, WHITE)
+        offset_x = i * (COLS * 30 + 10)
+        offset_y = ROWS * 30 + 20
+        screen.blit(score_text, (offset_x + 10, offset_y))
+
+
+def draw_main_menu():
+    screen.fill((0,0,0)) # background color
+    
+    # title text
+    font = pygame.font.Font(None, 72)
+    title_text = font.render("Tetris", True, (255,255,255))
+    title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 4))
+    screen.blit(title_text, title_rect)
+    
+    # "Game Start" button
+    button_font = pygame.font.Font(None, 48)
+    button_text = button_font.render("Press Enter to Start", True, (255,255,255))
+    button_rect = button_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
+    screen.blit(button_text, button_rect)
+    
+    pygame.display.update()
+
 # main function
 def main():
     running = True
+    game_state = "menu"
     drop_timer = [0,0]
     
     try:
         initialize_gpio()
         
         while running:
-            screen.fill(BLACK)
-            print("Running main loop...")
-            
-            for i, player in enumerate(players):
-                draw_board(player, i)
-                draw_current_block(player, i)
-                try:
-                    handle_input(player, i)
-                except Exception as e:
-                    print(f"Error in handle_input: {e}")
+            if game_state == "menu":
+                draw_main_menu()
                 
-                drop_timer[i] += 1
-                if drop_timer[i] >= FPS // 2:
-                    drop_block(player)
-                    drop_timer[i] = 0
-            
-                clear_lines(player,players[1-i])
+                for event in pygame.event.get():
+                    if event.type == pygame.QUIT:
+                        running = False
+                    elif event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_RETURN:
+                            game_state = "game"
+            elif game_state == "game":
+                screen.fill(BLACK)
                 
-                if check_game_over(player):
-                    print(f"player {2-i} Wins!")
-                    running = False            
-            
-            pygame.display.update()
-            clock.tick(FPS)
+                for i, player in enumerate(players):
+                    draw_board(player, i)
+                    draw_current_block(player, i)
+                    
+                draw_scores()
+                
+                for i, player in enumerate(players):
+                    try:
+                        handle_input(player, i)
+                    except Exception as e:
+                        print(f"Error in handle_input: {e}")
+                    
+                    drop_timer[i] += 1
+                    if drop_timer[i] >= FPS // 2:
+                        drop_block(player)
+                        drop_timer[i] = 0
+                
+                    clear_lines(player,players[1-i])
+                    
+                    if check_game_over(player):
+                        print(f"player {2-i} Wins!")
+                        running = False            
+                
+                pygame.display.update()
+                clock.tick(FPS)
     
     except Exception as e:
         print(f"Unexpected error: {e}")
@@ -261,6 +303,6 @@ def main():
         pygame.quit()
         sys.exit()
 
+
 if __name__ == "__main__":
     main()
-
