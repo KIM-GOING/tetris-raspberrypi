@@ -244,11 +244,76 @@ def draw_main_menu():
     screen.blit(button_text, button_rect)
     
     pygame.display.update()
+    
+def draw_game_over(winning_player, selected_index):
+    screen.fill(BLACK)
+    
+    # winning message
+    font = pygame.font.Font(None, 72)
+    win_text = font.render(f"Player {winning_player} Wins!", True, (255,255,255))
+    win_rect = win_text.get_rect(center=(WIDTH // 2, HEIGHT // 3))
+    screen.blit(win_text, win_rect)
+    
+    # action button message
+    button_font = pygame.font.Font(None, 48)
+    buttons = ["Back to Menu", "Exit"]
+    button_rects = []
+    
+    for i, text in enumerate(buttons):
+        color = WHITE if i != selected_index else (0,255,0)
+        text_surface = button_font.render(text,True,BLACK)
+        button_rect = pygame.Rect(WIDTH // 2 - 125, HEIGHT // 2 + i * 80 - 30, 250, 60)
+        pygame.draw.rect(screen,color,button_rect)
+        screen.blit(text_surface, text_surface.get_rect(center=button_rect.center))
+        button_rects.append(button_rect)
+    
+    pygame.display.update()
+    return button_rects
+
+def handle_game_over(selected_index, button_rects):
+    x,y,sw = get_joystick_input(0)
+    
+    if y > 700:
+        selected_index = min(selected_index + 1, len(button_rects) - 1)
+    elif y < 300:
+        selected_index = max(selected_index - 1, 0)
+    
+    if is_switch_pressed(0):
+        if selected_index == 0:
+            return "menu", selected_index
+        elif selected_index == 1:
+            pygame.quit()
+            sys.exit()
+    
+    return "game_over", selected_index
+
+def reset_game():
+    global players
+    players = [
+        {
+         "board": [[0 for _ in range(COLS)] for _ in range(ROWS)],
+         "current_shape": shapes[0],
+         "current_pos": [0, COLS // 2 - 2],
+         "current_color": colors[0],
+         "score": 0,
+         "game_over": False,
+        },
+        {
+         "board": [[0 for _ in range(COLS)] for _ in range(ROWS)],
+         "current_shape": shapes[1],
+         "current_pos": [0, COLS // 2 - 2],
+         "current_color": colors[1],
+         "score": 0,
+         "game_over": False,
+        },
+    ]
 
 # main function
 def main():
     running = True
     game_state = "menu"
+    winning_player = None
+    selected_index = 0
     drop_timer = [0,0]
     
     try:
@@ -263,6 +328,7 @@ def main():
                         running = False
                     elif event.type == pygame.KEYDOWN:
                         if event.key == pygame.K_RETURN:
+                            reset_game()
                             game_state = "game"
             elif game_state == "game":
                 screen.fill(BLACK)
@@ -287,11 +353,15 @@ def main():
                     clear_lines(player,players[1-i])
                     
                     if check_game_over(player):
-                        print(f"player {2-i} Wins!")
-                        running = False            
+                        winning_player = 2 - i
+                        game_state = "game_over"
                 
                 pygame.display.update()
                 clock.tick(FPS)
+                
+            elif game_state == "game_over":
+                button_rects = draw_game_over(winning_player, selected_index)
+                game_state, selected_index = handle_game_over(selected_index, button_rects)
     
     except Exception as e:
         print(f"Unexpected error: {e}")

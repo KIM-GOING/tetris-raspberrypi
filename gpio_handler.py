@@ -1,8 +1,8 @@
 import spidev
 import RPi.GPIO as GPIO
 
-JOYSTICK = 17
-SWITCH = 22
+JOYSTICK = 27
+SWITCH = 23
 
 spi = spidev.SpiDev()
 
@@ -36,8 +36,8 @@ def read_adc(channel):
 def get_joystick_input():
     try:
         print("Reading joystick input...")
-        x = read_adc(0)
-        y = read_adc(2)
+        x = read_adc(1)
+        y = read_adc(3)
         sw = GPIO.input(JOYSTICK)
         print(f"Joystick Input - x: {x}, y: {y}, sw: {sw}")
         return x, y, sw
