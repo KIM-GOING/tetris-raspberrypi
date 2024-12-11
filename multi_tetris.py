@@ -239,7 +239,7 @@ def draw_main_menu(selected_index):
     screen.blit(title_text, title_rect)
     
     button_font = pygame.font.Font(None, 48)
-    options = ["Start Tetris","Show Ranking", "Exit"]
+    options = ["Start Tetris","Show Ranking"]
     for i, option in enumerate(options):
         color = (0,255,0) if i == selected_index else WHITE
         text = button_font.render(option, True, color)
@@ -261,9 +261,6 @@ def handle_main_menu(selected_index):
             return "game", selected_index
         elif selected_index == 1:
             return "ranking", selected_index
-        elif selected_index == 2:
-            pygame.quit()
-            sys.exit()
     
     return "menu", selected_index
     
