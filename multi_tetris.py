@@ -101,12 +101,12 @@ def handle_input(player, player_index):
     
     x, y, sw = get_joystick_input(player_index)
     
-    if x < 300:
+    if x < 200:
         move_block(player,-1,0)
-    elif x > 700:
+    elif x > 800:
         move_block(player,1,0)
         
-    if y > 700:
+    if y > 800:
         drop_block(player)
     
     if sw and not switch_states[player_index]:
@@ -405,11 +405,9 @@ def save_ranking(ranking):
 
 def update_ranking(score):
     ranking = load_ranking()
-    print(f"Loaded ranking: {ranking}")
     ranking.append({"score": score})
     ranking = sorted(ranking, key=lambda x: x["score"], reverse=True)
     save_ranking(ranking)
-    print(f"Updated ranking: {ranking}")
 
 def draw_ranking_page():
     screen.fill(BLACK)
