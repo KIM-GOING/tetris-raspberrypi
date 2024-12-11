@@ -90,6 +90,7 @@ def move_block(player, dx, dy):
 # handling function
 last_joystick_time=[0,0]
 joystick_delay=0.04
+switch_states=[False,False]
 
 def handle_input(player, player_index):
     global last_joystick_time
@@ -106,10 +107,14 @@ def handle_input(player, player_index):
         move_block(player,1,0)
         
     if y > 700:
-        move_block(player,0,1)
-    
-    if sw:
         drop_block(player)
+    
+    if sw and not switch_states[player_index]:
+        hard_drop_block(player)
+        switch_states[player_index] = True
+    
+    if not sw:
+        switch_states[player_index] = False
     
     if is_switch_pressed(player_index):
         rotate_block(player)
@@ -147,6 +152,23 @@ def rotate_block(player):
     # rotation and collision checking   
     if check_collision(player):
         player["current_shape"] = original_shape
+
+def find_lowest_postion(player):
+    original_y = player["current_pos"][0]
+    while True:
+        player["current_pos"][0] += 1
+        if check_collision(player):
+            player["current_pos"][0] -= 1
+            break
+    lowest_y = player["current_pos"][0]
+    player["current_pos"][0] = original_y
+    return lowest_y
+
+def hard_drop_block(player):
+    lowest_y = find_lowest_postion(player)
+    player["current_pos"][0] = lowest_y
+    lock_block(player)
+    spawn_new_block(player)
 
 # collision checking function
 def check_collision(player):
