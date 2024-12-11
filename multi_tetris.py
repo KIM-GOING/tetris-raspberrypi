@@ -239,7 +239,7 @@ def draw_main_menu(selected_index):
     screen.blit(title_text, title_rect)
     
     button_font = pygame.font.Font(None, 48)
-    options = ["Start Tetris","Show Ranking"]
+    options = ["Start Tetris","Show Ranking", "Exit"]
     for i, option in enumerate(options):
         color = (0,255,0) if i == selected_index else WHITE
         text = button_font.render(option, True, color)
@@ -248,19 +248,33 @@ def draw_main_menu(selected_index):
     
     pygame.display.update()
 
+main_last_joystick_time = 0
+main_joystick_delay = 0.2
 def handle_main_menu(selected_index):
+    global main_last_joystick_time
+    current_time = time.time()
+    
+    if current_time - main_last_joystick_time < main_joystick_delay:
+        return "menu", selected_index
+    
     x,y,sw = get_joystick_input(0)
     
     if y > 700:
-        selected_index = min(selected_index + 1, 1)
+        selected_index = min(selected_index + 1, 2)
+        main_last_joystick_time = current_time
     elif y < 300:
         selected_index = max(selected_index - 1, 0)
+        main_last_joystick_time = current_time
+        
     
     if is_switch_pressed(0):
         if selected_index == 0:
             return "game", selected_index
         elif selected_index == 1:
             return "ranking", selected_index
+        elif selected_index == 2:
+            pygame.quit()
+            sys.exit()
     
     return "menu", selected_index
     
@@ -289,41 +303,56 @@ def draw_game_over(winning_player, selected_index):
     pygame.display.update()
     return button_rects
 
+gg_last_joystick_time = 0
+gg_joystick_delay = 0.2
 def handle_game_over(selected_index, button_rects):
+    global gg_last_joystick_time
+    current_time = time.time()
+    
+    if current_time - gg_last_joystick_time < gg_joystick_delay:
+        return "game_over", selected_index
+    
     x,y,sw = get_joystick_input(0)
     
     if y > 700:
         selected_index = min(selected_index + 1, len(button_rects) - 1)
+        gg_last_joystick_time = current_time
     elif y < 300:
         selected_index = max(selected_index - 1, 0)
+        gg_last_joystick_time = current_time
     
+
     if is_switch_pressed(0):
         if selected_index == 0:
             return "menu", selected_index
         elif selected_index == 1:
             pygame.quit()
             sys.exit()
-    
+        
     return "game_over", selected_index
 
-def reset_game(inputs):
+def gray_out_board(player):
+    for row in range(ROWS):
+        for col in range(COLS):
+            if player["board"][row][col] != 0:
+                player["board"][row][col] = GRAY
+
+def reset_game():
     global players
     players = [
         {
-         "name": inputs[0],
          "board": [[0 for _ in range(COLS)] for _ in range(ROWS)],
-         "current_shape": shapes[0],
+         "current_shape": random.choice(shapes),
          "current_pos": [0, COLS // 2 - 2],
-         "current_color": colors[0],
+         "current_color": random.choice(colors),
          "score": 0,
          "game_over": False,
         },
         {
-         "name": inputs[1],
          "board": [[0 for _ in range(COLS)] for _ in range(ROWS)],
-         "current_shape": shapes[1],
+         "current_shape": random.choice(shapes),
          "current_pos": [0, COLS // 2 - 2],
-         "current_color": colors[1],
+         "current_color": random.choice(colors),
          "score": 0,
          "game_over": False,
         },
@@ -338,37 +367,27 @@ def initialize_ranking():
             json.load(file)
     except (FileNotFoundError, json.JSONDecodeError):
         print("Initializing ranking file.")
-        save_ranking([
-            {"name": "Player1", "score": 0},
-            {"name": "Player2", "score": 0},
-            {"name": "Player3", "score": 0},
-            {"name": "Player4", "score": 0},
-            {"name": "Player5", "score": 0}
-        ])
+        save_ranking([])
     
 def load_ranking():
     try:
         with open(RANKING_FILE,"r") as file:
             data = json.load(file)
             return data
-        
-    except FileNotFoundError:
-        save_ranking([])
-        return []
-    except json.JSONDecodeError as e:
-        print(f"Error loading JSON: {e}")
-        save_ranking([])
+    except (FileNotFoundError, json.JSONDecodeError):
         return []
 
 def save_ranking(ranking):
     with open(RANKING_FILE, "w") as file:
-        json.dump(ranking, file)
+        json.dump(ranking, file, indent=4)
 
-def update_ranking(player_name,score):
+def update_ranking(score):
     ranking = load_ranking()
-    ranking.append({"name": player_name, "score": score})
-    ranking = sorted(ranking, key=lambda x: x["score"], reverse=True)[:5]
+    print(f"Loaded ranking: {ranking}")
+    ranking.append({"score": score})
+    ranking = sorted(ranking, key=lambda x: x["score"], reverse=True)
     save_ranking(ranking)
+    print(f"Updated ranking: {ranking}")
 
 def draw_ranking_page():
     screen.fill(BLACK)
@@ -381,13 +400,18 @@ def draw_ranking_page():
     ranking = load_ranking()
     ranking_font = pygame.font.Font(None, 48)
     
-    for i, entry in enumerate(ranking[:5], start=1):
-        rank_text = f"{i}. {entry['name']} - {entry['score']} points"
-        rank_surface = ranking_font.render(rank_text, True, WHITE)
-        screen.blit(rank_surface, (WIDTH//4, HEIGHT//4+i*50))
+    if not ranking:
+        no_data_text = rangking_font.render("No Records Yet", True, WHITE)
+        no_data_rect = no_data_text.get_rect(center=(WIDTH//2,HEIGHT//2))
+        screen.blit(no_data_text, no_data_rect)
+    else:
+        for i, entry in enumerate(ranking[:5], start=1):
+            rank_text = f"Rank {i}. {entry['score']} points"
+            rank_surface = ranking_font.render(rank_text, True, WHITE)
+            screen.blit(rank_surface, (WIDTH//4, HEIGHT//4+i*50))
     
     back_font=pygame.font.Font(None, 48)
-    back_text = back_font.render("Menu", True, WHITE)
+    back_text = back_font.render("Press switch to go Menu", True, WHITE)
     back_rect = back_text.get_rect(center=(WIDTH//2, HEIGHT-50))
     screen.blit(back_text, back_rect)
     
@@ -401,19 +425,27 @@ def handle_ranking_page(back_rect):
             sys.exit()
     if is_switch_pressed(0):
         data = "menu"
-        print(data)
         return data
     
     return "ranking"
 
+def update_scores_after_game():
+    for player in players:
+        update_ranking(player["score"])
+
 # main function
+game_over_start_time = None
+losing_player_index = None
 def main():
+    global game_over_start_time, losing_player_index
     initialize_ranking()
     
     running = True
     game_state = "menu"
     winning_player = None
     selected_index = 0
+    game_initialized = False
+    score_update = False
     
     drop_timer = [0,0]
     
@@ -425,11 +457,18 @@ def main():
                 draw_main_menu(selected_index)
                 game_state, selected_index = handle_main_menu(selected_index)
                 
+                if game_state == "game":
+                    reset_game()
+                    game_initialized = True
+                
             elif game_state == "ranking":
                 back_rect = draw_ranking_page()
                 game_state = handle_ranking_page(back_rect)
             
             elif game_state == "game":
+                if not game_initialized:
+                    reset_game()
+                    game_initialized = True
                 
                 screen.fill(BLACK)
                 
@@ -454,14 +493,37 @@ def main():
                     
                     if check_game_over(player):
                         winning_player = 2 - i
-                        game_state = "game_over"
+                        losing_player_index = i
+                        gray_out_board(players[losing_player_index])
+                        game_over_start_time = time.time()
+                        game_state = "game_end"
+                        game_initialized = False
                 
                 pygame.display.update()
                 clock.tick(FPS)
+            
+            elif game_state =="game_end":
+                screen.fill(BLACK)
+                
+                for i, player in enumerate(players):
+                    draw_board(player, i)
+                
+                draw_scores()
+                
+                elapsed_time = time.time() - game_over_start_time
+                
+                if elapsed_time >= 3:
+                    game_state = "game_over"
+                    update_scores_after_game()
+                
+                pygame.display.update()
                 
             elif game_state == "game_over":
                 button_rects = draw_game_over(winning_player, selected_index)
                 game_state, selected_index = handle_game_over(selected_index, button_rects)
+                
+                if game_state == "menu":
+                    game_initialized = False
     
     except Exception as e:
         print(f"Unexpected error: {e}")
