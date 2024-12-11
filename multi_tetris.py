@@ -2,6 +2,7 @@ import pygame
 import sys
 import time
 import random
+import json
 from gpio_handler_multi import initialize_gpio, cleanup_gpio, get_joystick_input, is_switch_pressed
 
 # basic setting
@@ -228,7 +229,7 @@ def draw_scores():
         screen.blit(score_text, (offset_x + 10, offset_y))
 
 
-def draw_main_menu():
+def draw_main_menu(selected_index):
     screen.fill((0,0,0)) # background color
     
     # title text
@@ -237,13 +238,34 @@ def draw_main_menu():
     title_rect = title_text.get_rect(center=(WIDTH // 2, HEIGHT // 4))
     screen.blit(title_text, title_rect)
     
-    # "Game Start" button
     button_font = pygame.font.Font(None, 48)
-    button_text = button_font.render("Press Enter to Start", True, (255,255,255))
-    button_rect = button_text.get_rect(center=(WIDTH // 2, HEIGHT // 2))
-    screen.blit(button_text, button_rect)
+    options = ["Start Tetris","Show Ranking", "Exit"]
+    for i, option in enumerate(options):
+        color = (0,255,0) if i == selected_index else WHITE
+        text = button_font.render(option, True, color)
+        text_rect = text.get_rect(center=(WIDTH // 2, HEIGHT // 2 + i * 60))
+        screen.blit(text, text_rect)
     
     pygame.display.update()
+
+def handle_main_menu(selected_index):
+    x,y,sw = get_joystick_input(0)
+    
+    if y > 700:
+        selected_index = min(selected_index + 1, 1)
+    elif y < 300:
+        selected_index = max(selected_index - 1, 0)
+    
+    if is_switch_pressed(0):
+        if selected_index == 0:
+            return "game", selected_index
+        elif selected_index == 1:
+            return "ranking", selected_index
+        elif selected_index == 2:
+            pygame.quit()
+            sys.exit()
+    
+    return "menu", selected_index
     
 def draw_game_over(winning_player, selected_index):
     screen.fill(BLACK)
@@ -287,10 +309,11 @@ def handle_game_over(selected_index, button_rects):
     
     return "game_over", selected_index
 
-def reset_game():
+def reset_game(inputs):
     global players
     players = [
         {
+         "name": inputs[0],
          "board": [[0 for _ in range(COLS)] for _ in range(ROWS)],
          "current_shape": shapes[0],
          "current_pos": [0, COLS // 2 - 2],
@@ -299,6 +322,7 @@ def reset_game():
          "game_over": False,
         },
         {
+         "name": inputs[1],
          "board": [[0 for _ in range(COLS)] for _ in range(ROWS)],
          "current_shape": shapes[1],
          "current_pos": [0, COLS // 2 - 2],
@@ -308,12 +332,92 @@ def reset_game():
         },
     ]
 
+# json file
+RANKING_FILE = "ranking.json"
+
+def initialize_ranking():
+    try:
+        with open(RANKING_FILE,"r") as file:
+            json.load(file)
+    except (FileNotFoundError, json.JSONDecodeError):
+        print("Initializing ranking file.")
+        save_ranking([
+            {"name": "Player1", "score": 0},
+            {"name": "Player2", "score": 0},
+            {"name": "Player3", "score": 0},
+            {"name": "Player4", "score": 0},
+            {"name": "Player5", "score": 0}
+        ])
+    
+def load_ranking():
+    try:
+        with open(RANKING_FILE,"r") as file:
+            data = json.load(file)
+            return data
+        
+    except FileNotFoundError:
+        save_ranking([])
+        return []
+    except json.JSONDecodeError as e:
+        print(f"Error loading JSON: {e}")
+        save_ranking([])
+        return []
+
+def save_ranking(ranking):
+    with open(RANKING_FILE, "w") as file:
+        json.dump(ranking, file)
+
+def update_ranking(player_name,score):
+    ranking = load_ranking()
+    ranking.append({"name": player_name, "score": score})
+    ranking = sorted(ranking, key=lambda x: x["score"], reverse=True)[:5]
+    save_ranking(ranking)
+
+def draw_ranking_page():
+    screen.fill(BLACK)
+    
+    font=pygame.font.Font(None, 72)
+    title_text = font.render("Ranking", True, WHITE)
+    title_rect = title_text.get_rect(center=(WIDTH//2, HEIGHT//8))
+    screen.blit(title_text, title_rect)
+    
+    ranking = load_ranking()
+    ranking_font = pygame.font.Font(None, 48)
+    
+    for i, entry in enumerate(ranking[:5], start=1):
+        rank_text = f"{i}. {entry['name']} - {entry['score']} points"
+        rank_surface = ranking_font.render(rank_text, True, WHITE)
+        screen.blit(rank_surface, (WIDTH//4, HEIGHT//4+i*50))
+    
+    back_font=pygame.font.Font(None, 48)
+    back_text = back_font.render("Menu", True, WHITE)
+    back_rect = back_text.get_rect(center=(WIDTH//2, HEIGHT-50))
+    screen.blit(back_text, back_rect)
+    
+    pygame.display.update()
+    return back_rect
+
+def handle_ranking_page(back_rect):
+    for event in pygame.event.get():
+        if event.type == pygame.QUIT:
+            pygame.quit()
+            sys.exit()
+    if is_switch_pressed(0):
+        data = "menu"
+        print(data)
+        return data
+    
+    return "ranking"
+
 # main function
 def main():
+    initialize_ranking()
+    
     running = True
     game_state = "menu"
     winning_player = None
     selected_index = 0
+    
     drop_timer = [0,0]
     
     try:
@@ -321,16 +425,15 @@ def main():
         
         while running:
             if game_state == "menu":
-                draw_main_menu()
+                draw_main_menu(selected_index)
+                game_state, selected_index = handle_main_menu(selected_index)
                 
-                for event in pygame.event.get():
-                    if event.type == pygame.QUIT:
-                        running = False
-                    elif event.type == pygame.KEYDOWN:
-                        if event.key == pygame.K_RETURN:
-                            reset_game()
-                            game_state = "game"
+            elif game_state == "ranking":
+                back_rect = draw_ranking_page()
+                game_state = handle_ranking_page(back_rect)
+            
             elif game_state == "game":
+                
                 screen.fill(BLACK)
                 
                 for i, player in enumerate(players):
